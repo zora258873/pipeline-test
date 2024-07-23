@@ -1,0 +1,50 @@
+# Node.js with Angular
+# Build a Node.js project that uses Angular.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+trigger:
+- master
+
+pool:
+  name: 'Azure Pipelines'  # 确保这里的代理池名称是您的自托管代理池名称
+
+variables:
+  BUILD_SOURCEBRANCH: 'dev'
+  buildConfiguration: 'Release'
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '10.x'
+  displayName: 'Install Node.js'
+
+- script: |
+    VERSION=$(Build.BuildNumber)
+    node generate_version.js
+    env:
+      BUILD_BUILDNUMBER: VERSION
+      BUILD_SOURCEBRANCH: $(BUILD_SOURCEBRANCH)
+  displayName: 'Update Version'
+
+- script: |
+    npm install -g @angular/cli
+    npm install
+    ng build --prod --configuration $(buildConfiguration)
+  displayName: 'npm install and build'
+
+# 保存构建工件
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathtoPublish: 'dist'
+    artifactName: 'drop'
+    publishLocation: 'Container'
+  displayName: 'Publish Artifact'
+
+# 部署步骤（示例：Azure App Service）
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'pipeline-service'
+    appName: 'pipeline-service'
+    package: $(System.DefaultWorkingDirectory)/dist
+  displayName: 'Deploy to Azure Web App'
